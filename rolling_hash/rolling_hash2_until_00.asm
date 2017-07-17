@@ -32,23 +32,36 @@
 ;;;			uint64_t trigger)
 
 %include "reg_sizes.asm"
+%use smartalign
+ALIGNMODE P6
 
 %ifidn __OUTPUT_FORMAT__, elf64
  %define arg0  rdi
  %define arg1  rsi
+ %define arg1.w  esi
  %define arg2  rdx
  %define arg3  rcx
  %define arg4  r8
  %define arg5  r9
 
  %define arg6  r10
+ %define arg6.w  r10d
  %define arg7  r11
  %define arg8  r12		; must be saved and loaded
  %define tmp1  rbp		; must be saved and loaded
+ %define tmp1.w  ebp		; must be saved and loaded
  %define tmp2  rbx		; must be saved and loaded
+ %define tmp2.w  ebx		; must be saved and loaded
+ %define tmp2.b  bl		; must be saved and loaded
  %define tmp3  r13		; must be saved and loaded
+ %define tmp3.w  r13d		; must be saved and loaded
+ %define tmp3.b  r13b		; must be saved and loaded
  %define tmp4  r14		; must be saved and loaded
+ %define tmp4.w  r14d		; must be saved and loaded
+ %define tmp4.b  r14b		; must be saved and loaded
  %define tmp5  r15		; must be saved and loaded
+ %define tmp5.w  r15d		; must be saved and loaded
+ %define tmp5.b  r15b		; must be saved and loaded
  %define return rax
  %define PS 8
  %define frame_size 6*8
@@ -79,6 +92,7 @@
 %ifidn __OUTPUT_FORMAT__, win64
  %define arg0   rcx
  %define arg1   rdx
+ %define arg1.w edx
  %define arg2   r8
  %define arg3   r9
  %define arg4   r12 		; must be saved and loaded
@@ -127,6 +141,7 @@
 
 %define idx   arg0
 %define max   arg1
+%define max.w arg1.w
 %define t1    arg2
 %define t2    arg3
 %define b1    arg4
@@ -138,10 +153,20 @@
 %define pos   rax
 %define pos.w eax
 %define x     tmp2
+%define x.w     tmp2.w
+%define x.b     tmp2.b
 %define y     tmp3
+%define y.w     tmp3.w
+%define y.b     tmp3.b
 %define z     tmp4
+%define z.w     tmp4.w
+%define z.b     tmp4.b
 %define h     tmp1
+%define h.w    tmp1.w
+%define hbw    tmp1.b
 %define a     tmp5
+%define a.w     tmp5.w
+%define a.b     tmp5.b
 
 default rel
 [bits 64]
@@ -152,15 +177,22 @@ global rolling_hash2_run_until_00:function
 func(rolling_hash2_run_until_00)
 	FUNC_SAVE
 	mov	pos.w, dword [idx]
+	add	b1, pos
+	add	b2, pos
 	sub	max, 2
 	cmp	pos, max
 	jg	.less_than_2
-
-.loop2:	ror	hash, 0x3f
-	movzx	x, byte [b1 + pos]
-	movzx	a, byte [b1 + pos + 1]
-	movzx	y, byte [b2 + pos]
-	movzx	h, byte [b2 + pos + 1]
+align 16
+.loop2:	rorx	hash, hash, 0x3f
+	movzx	x.w, word [b1]
+	mov	a.w, x.w
+	movzx	x.w, x.b
+	shr	a.w, 8
+	movzx	y.w, word [b2]
+	mov	h.w, y.w
+	movzx	y.w, y.b
+	shr	h.w,8
+	
 	mov	z, [t1 + x * 8]
 	xor	z, [t2 + y * 8]
 	xor	hash, z
@@ -169,7 +201,7 @@ func(rolling_hash2_run_until_00)
 	cmp	x, trigger
 	je	.ret_0
 
-	ror	hash, 0x3f
+	rorx	hash, hash, 0x3f
 	mov	z, [t1 + a * 8]
 	xor	z, [t2 + h * 8]
 	xor	hash, z
@@ -179,6 +211,8 @@ func(rolling_hash2_run_until_00)
 	je	.ret_1
 
 	add	pos, 2
+	add	b1,  2
+	add	b2,  2
 	cmp	pos, max
 	jle	.loop2
 
@@ -186,13 +220,15 @@ func(rolling_hash2_run_until_00)
 	add	max, 1
 	cmp	pos, max
 	jg	.ret_0
-	ror	hash, 0x3f
-	movzx	x, byte [b1 + pos]
-	movzx	y, byte [b2 + pos]
+	rorx	hash, hash, 0x3f
+	movzx	x.w, byte [b1]
+	movzx	y.w, byte [b2]
 	mov	z, [t1 + x * 8]
 	xor	z, [t2 + y * 8]
 	xor	hash, z
-.ret_1:	add	pos, 1
+align 16
+.ret_1:	add	pos.w, 1
+;align 16
 .ret_0:	mov	dword [idx], pos.w
 	mov	rax, hash
 	FUNC_RESTORE

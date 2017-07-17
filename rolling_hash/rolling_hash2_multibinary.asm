@@ -94,15 +94,15 @@ rolling_hash2_run_until_dispatch_init:
 	cmovne  arg1, rbx
 
 	and	ecx, (FLAG_CPUID1_ECX_AVX | FLAG_CPUID1_ECX_OSXSAVE)
-	cmp	ecx, (FLAG_CPUID1_ECX_AVX | FLAG_CPUID1_ECX_OSXSAVE)
 	lea	rbx, [rolling_hash2_run_until_00 WRT_OPT]
 
+	cmp	ecx, (FLAG_CPUID1_ECX_AVX | FLAG_CPUID1_ECX_OSXSAVE)
 	jne	_done_rolling_hash2_run_until_data_init
 	mov	rsi, rbx
 
 	;; Try for AVX2
 	xor	ecx, ecx
-	mov	eax, 7
+	lea	eax, [rcx+7] ;; ecx is zero
 	cpuid
 	test	ebx, FLAG_CPUID1_EBX_AVX2
 	lea     rbx, [rolling_hash2_run_until_04 WRT_OPT]
