@@ -182,14 +182,16 @@ func(rolling_hash2_run_until_04)
 	jg	.less_than_2
 align 16
 .loop2:	rorx	hash, hash, 0x3f
-	movzx	x.w, word [b1]
-	mov 	a.w, x.w
-	movzx	x.w, x.b
-	shr	a.w, 8
-	movzx	y.w, word [b2]
-	mov	h.w, y.w
-	movzx	y.w, y.b
-	shr	h.w, 8
+	movzx	x.w, byte [b1]
+	movzx	y.w, byte [b2]
+	movzx	a.w, byte [b1+1]
+	movzx	h.w, byte [b2+2]
+;	mov 	a.w, x.w
+;	movzx	x.w, x.b
+;	mov	h.w, y.w
+;	movzx	y.w, y.b
+;	shr	a.w, 8
+;	shr	h.w, 8
 	mov	z, [t1 + x * 8]
 	xor	z, [t2 + y * 8]
 	xor	hash, z
