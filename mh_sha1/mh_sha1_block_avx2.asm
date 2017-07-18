@@ -391,11 +391,11 @@ align 16
  align 16
  .segs_loop:
 	;; Initialize digests
-	vmovdqa	A, [rax + 0*64]; + mh_segs]
-	vmovdqa	B, [rax + 1*64]; + mh_segs]
-	vmovdqa	C, [rax + 2*64]; + mh_segs]
-	vmovdqa	D, [rax + 3*64]; + mh_segs]
-	vmovdqa	E, [rax + 4*64]; + mh_segs]
+	vmovdqa	A, [rax + 0*64]
+	vmovdqa	B, [rax + 1*64]
+	vmovdqa	C, [rax + 2*64]
+	vmovdqa	D, [rax + 3*64]
+	vmovdqa	E, [rax + 4*64]
 
 	vmovdqa  AA, A
 	vmovdqa  BB, B
@@ -455,11 +455,11 @@ align 16
 	vpaddd  E,E, EE
 
 	; write out digests
-	vmovdqa  [rax + 0*64], A ; + mh_segs], A
-	vmovdqa  [rax + 1*64], B; + mh_segs], B
-	vmovdqa  [rax + 2*64], C; + mh_segs], C
-	vmovdqa  [rax + 3*64], D; + mh_segs], D
-	vmovdqa  [rax + 4*64], E; + mh_segs], E
+	vmovdqa  [rax + 0*64], A
+	vmovdqa  [rax + 1*64], B
+	vmovdqa  [rax + 2*64], C
+	vmovdqa  [rax + 3*64], D
+	vmovdqa  [rax + 4*64], E
 
 	add	pref,      512
 
@@ -468,10 +468,6 @@ align 16
 	sub	mh_segs, 1
 	jnz	.segs_loop
 
-;
-;	add 	mh_segs,   32
-;	cmp	mh_segs,   64
-;	jc 	.segs_loop
 
 	sub	mh_data_p, (1024)
 	add 	mh_in_p,   (1024)
