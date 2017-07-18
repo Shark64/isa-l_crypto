@@ -350,6 +350,7 @@ func(mh_sha1_block_avx2)
 	; save rsp
 	mov	RSP_SAVE, rsp
 
+	mov 	r15, rcx
 	test	loops, loops
 	jle	.return
 
@@ -357,22 +358,14 @@ func(mh_sha1_block_avx2)
 	sub     rsp, FRAMESZ
 	; align rsp to 32 Bytes needed by avx2
 	and	rsp, ~0x1F
-
- %assign I 0					; copy segs_digests into stack
- %rep 2
-	VMOVPS  A, [mh_digests_p + I*32*5 + 32*0]
-	VMOVPS  B, [mh_digests_p + I*32*5 + 32*1]
-	VMOVPS  C, [mh_digests_p + I*32*5 + 32*2]
-	VMOVPS  D, [mh_digests_p + I*32*5 + 32*3]
-	VMOVPS  E, [mh_digests_p + I*32*5 + 32*4]
-
-	vmovdqa [rsp + I*32*5 + 32*0], A
-	vmovdqa [rsp + I*32*5 + 32*1], B
-	vmovdqa [rsp + I*32*5 + 32*2], C
-	vmovdqa [rsp + I*32*5 + 32*3], D
-	vmovdqa [rsp + I*32*5 + 32*4], E
- %assign I (I+1)
- %endrep
+	mov	rax, rdi
+	mov	r14, rsi
+	mov	rdi, rsp
+	mov	ecx, FRAMESZ
+	rep movsb
+	mov 	rdi, rax
+	mov	rcx, r15
+	mov	rsi, r14
 
 align 16
 .block_loop:
@@ -391,16 +384,18 @@ align 16
 %assign I (I+1)
 %endrep
 
-	xor	mh_segs, mh_segs			;start from the first 8 segments
+;	xor	mh_segs, mh_segs			;start from the first 8 segments
+	mov	mh_segs, 2
+	mov	rax, rsp
 	mov	pref, 1024				;avoid prefetch repeadtedly
  align 16
  .segs_loop:
 	;; Initialize digests
-	vmovdqa	A, [rsp + 0*64 + mh_segs]
-	vmovdqa	B, [rsp + 1*64 + mh_segs]
-	vmovdqa	C, [rsp + 2*64 + mh_segs]
-	vmovdqa	D, [rsp + 3*64 + mh_segs]
-	vmovdqa	E, [rsp + 4*64 + mh_segs]
+	vmovdqa	A, [rax + 0*64]; + mh_segs]
+	vmovdqa	B, [rax + 1*64]; + mh_segs]
+	vmovdqa	C, [rax + 2*64]; + mh_segs]
+	vmovdqa	D, [rax + 3*64]; + mh_segs]
+	vmovdqa	E, [rax + 4*64]; + mh_segs]
 
 	vmovdqa  AA, A
 	vmovdqa  BB, B
@@ -460,18 +455,23 @@ align 16
 	vpaddd  E,E, EE
 
 	; write out digests
-	vmovdqa  [rsp + 0*64 + mh_segs], A
-	vmovdqa  [rsp + 1*64 + mh_segs], B
-	vmovdqa  [rsp + 2*64 + mh_segs], C
-	vmovdqa  [rsp + 3*64 + mh_segs], D
-	vmovdqa  [rsp + 4*64 + mh_segs], E
+	vmovdqa  [rax + 0*64], A ; + mh_segs], A
+	vmovdqa  [rax + 1*64], B; + mh_segs], B
+	vmovdqa  [rax + 2*64], C; + mh_segs], C
+	vmovdqa  [rax + 3*64], D; + mh_segs], D
+	vmovdqa  [rax + 4*64], E; + mh_segs], E
 
 	add	pref,      512
 
 	add	mh_data_p, 512
-	add 	mh_segs,   32
-	cmp	mh_segs,   64
-	jc 	.segs_loop
+	add	rax, 32
+	sub	mh_segs, 1
+	jnz	.segs_loop
+
+;
+;	add 	mh_segs,   32
+;	cmp	mh_segs,   64
+;	jc 	.segs_loop
 
 	sub	mh_data_p, (1024)
 	add 	mh_in_p,   (1024)
