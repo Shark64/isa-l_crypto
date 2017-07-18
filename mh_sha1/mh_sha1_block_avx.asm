@@ -36,15 +36,20 @@ default rel
 ;; Magic functions defined in FIPS 180-1
 ;;
 ; macro MAGIC_F0 F,B,C,D,T   ;; F = (D ^ (B & (C ^ D)))
+; Equivalent form ((B and C) or ((not B) and D))
 %macro MAGIC_F0 5
 %define %%regF %1
 %define %%regB %2
 %define %%regC %3
 %define %%regD %4
 %define %%regT %5
-    vpxor  %%regF, %%regC,%%regD
-    vpand  %%regF, %%regF,%%regB
-    vpxor  %%regF, %%regF,%%regD
+;    vpxor  %%regF, %%regC,%%regD
+;    vpand  %%regF, %%regF,%%regB
+;    vpxor  %%regF, %%regF,%%regD
+    vpandn %%regT, %%regB, %%regD
+    vpand  %%regF, %%regB, %%regC
+    vpor   %%regF, %%regF, %%regT
+
 %endmacro
 
 ; macro MAGIC_F1 F,B,C,D,T   ;; F = (B ^ C ^ D)
@@ -340,7 +345,7 @@ func(mh_sha1_block_avx)
 	; save rsp
 	mov	RSP_SAVE, rsp
 
-	cmp	loops, 0
+	test	loops, loops
 	jle	.return
 
 	; leave enough space to store segs_digests
