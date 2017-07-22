@@ -184,10 +184,11 @@ ALIGNMODE P6
  %define tmp4  r13		; must be saved and restored
  %define tmp5  r14		; must be saved and restored
  %define tmp6  r15		; must be saved and restored
- %define return rax
+ %define return eax
 
  %define func(x) x:
  %macro FUNC_SAVE 0
+	push	rbx
 	push	r12
 	push	r13
 	push	r14
@@ -198,6 +199,7 @@ ALIGNMODE P6
 	pop	r14
 	pop	r13
 	pop	r12
+	pop	rbx
  %endmacro
 %else
  ; Windows
@@ -265,7 +267,13 @@ ALIGNMODE P6
 %define mh_in_p  	arg0
 %define mh_digests_p 	arg1
 %define mh_data_p	arg2
+
+%ifidn __OUTPUT_FORMAT__, elf64
+	%define mh_segs  	ebx
+%else
+
 %define mh_segs  	tmp1
+%endif
 ;variables used by storing segs_digests on stack
 %define RSP_SAVE	tmp2
 %define FRAMESZ 	4*5*16		;BYTES*DWORDS*SEGS
@@ -372,15 +380,28 @@ align 16
 	;transform to big-endian data and store on aligned_frame
 	vbroadcasti128 F, [PSHUFFLE_BYTE_FLIP_MASK]
 	;transform input data from DWORD*16_SEGS*5 to DWORD*8_SEGS*5*2
+	mov	rax, mh_in_p
+	mov	rbx, mh_data_p; 
+	lea	r15, [mh_data_p + 0x200] ; 512 byte offset
 %assign I 0
 %rep 16
-	VMOVPS   T0,[mh_in_p + I*64+0*32]
-	VMOVPS   T1,[mh_in_p + I*64+1*32]
-
+;	VMOVPS   T0,[mh_in_p + I*64+0*32]
+;	VMOVPS   T1,[mh_in_p + I*64+1*32]
+	VMOVPS   T0,[rax]
+	VMOVPS   T1,[rax+32]
+%ifn  I = 15 
+	add	rax, 64
+%endif
 	vpshufb	T0, T0, F
-	vmovdqa	[mh_data_p +I*32+0*512],T0
+;	vmovdqa	[mh_data_p +I*32+0*512],T0
+	vmovdqa	[rbx],T0
 	vpshufb	T1, T1, F
-	vmovdqa	[mh_data_p +I*32+1*512],T1
+	vmovdqa	[r15],T1 ; 512+32
+%ifn I = 15 
+	add	rbx, 32
+	add	r15, 32
+%endif
+;	vmovdqa	[mh_data_p +I*32+1*512],T1
 %assign I (I+1)
 %endrep
 
@@ -470,26 +491,30 @@ align 16
 
 
 	sub	mh_data_p, (1024)
-	add 	mh_in_p,   (1024)
+	add 	mh_in_p,  (1024)
 	sub     loops, 1
 	jne     .block_loop
 
 
- %assign I 0					; copy segs_digests back to mh_digests_p
- %rep 2
-	vmovdqa A, [rsp + I*32*5 + 32*0]
-	vmovdqa B, [rsp + I*32*5 + 32*1]
-	vmovdqa C, [rsp + I*32*5 + 32*2]
-	vmovdqa D, [rsp + I*32*5 + 32*3]
-	vmovdqa E, [rsp + I*32*5 + 32*4]
+	mov	rdi, mh_digests_p
+	mov	rsi, rsp
+	mov 	ecx, 0x140
+	rep movsb
+; %assign I 0					; copy segs_digests back to mh_digests_p
+; %rep 2
+;	vmovdqa A, [rsp + I*32*5 + 32*0]
+;	vmovdqa B, [rsp + I*32*5 + 32*1]
+;	vmovdqa C, [rsp + I*32*5 + 32*2]
+;	vmovdqa D, [rsp + I*32*5 + 32*3]
+;	vmovdqa E, [rsp + I*32*5 + 32*4]
 
-	VMOVPS  [mh_digests_p + I*32*5 + 32*0], A
-	VMOVPS  [mh_digests_p + I*32*5 + 32*1], B
-	VMOVPS  [mh_digests_p + I*32*5 + 32*2], C
-	VMOVPS  [mh_digests_p + I*32*5 + 32*3], D
-	VMOVPS  [mh_digests_p + I*32*5 + 32*4], E
- %assign I (I+1)
- %endrep
+;	VMOVPS  [mh_digests_p + I*32*5 + 32*0], A
+;	VMOVPS  [mh_digests_p + I*32*5 + 32*1], B
+;	VMOVPS  [mh_digests_p + I*32*5 + 32*2], C
+;	VMOVPS  [mh_digests_p + I*32*5 + 32*3], D
+;	VMOVPS  [mh_digests_p + I*32*5 + 32*4], E
+; %assign I (I+1)
+; %endrep
 	mov	rsp, RSP_SAVE			; restore rsp
 
 .return:
