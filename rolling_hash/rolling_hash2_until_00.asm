@@ -185,10 +185,10 @@ func(rolling_hash2_run_until_00)
 align 16
 .loop2:	rorx	hash, hash, 0x3f
 	movzx	x.w, word [b1]
+	movzx	y.w, word [b2]
 	mov	a.w, x.w
 	movzx	x.w, x.b
 	shr	a.w, 8
-	movzx	y.w, word [b2]
 	mov	h.w, y.w
 	movzx	y.w, y.b
 	shr	h.w,8

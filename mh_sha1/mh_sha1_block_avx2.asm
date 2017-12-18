@@ -123,7 +123,8 @@ ALIGNMODE P6
 %define %%MAGIC %10
 %define %%data %11
 	vpaddd	%%regE, %%regE,%%immCNT
-	vpaddd	%%regE, %%regE,[%%data + (%%memW * 32)]
+	vpaddd	%%regE, %%regE,[%%data]
+	add	%%data, 32
 	PROLD_nd	%%regT,5, %%regF,%%regA
 	vpaddd	%%regE, %%regE,%%regT
 	%%MAGIC	%%regF,%%regB,%%regC,%%regD,%%regT      ;; FUN  = MAGIC_Fi(B,C,D)
@@ -131,7 +132,7 @@ ALIGNMODE P6
 	vpaddd	%%regE, %%regE,%%regF
 %endmacro
 
-%macro SHA1_STEP_16_79 11
+%macro SHA1_STEP_16_79 12
 %define %%regA	%1
 %define %%regB	%2
 %define %%regC	%3
@@ -143,20 +144,26 @@ ALIGNMODE P6
 %define %%immCNT %9
 %define %%MAGIC	%10
 %define %%data %11
+%define %%data2 %12
 	vpaddd	%%regE, %%regE,%%immCNT
 
-	vmovdqa	W14, [%%data + ((%%memW - 14) & 15) * 32]
+;	vmovdqa	W14, [%%data + ((%%memW - 14) & 15) * 32] ; 2 *32
+	vmovdqa	W14, [%%data] ; 2 *32
 	vpxor	W16, W16, W14
-	vpxor	W16, W16, [%%data + ((%%memW -  8) & 15) * 32]
-	vpxor	W16, W16, [%%data + ((%%memW -  3) & 15) * 32]
-
+;	vpxor	W16, W16, [%%data + ((%%memW -  8) & 15) * 32] ; 8 * 32
+;	vpxor	W16, W16, [%%data + ((%%memW -  3) & 15) * 32] ; 13 * 32
+	vpxor	W16, W16, [r14] ; 8 * 32
+	vpxor	W16, W16, [r14 + 0xa ] ; 13 * 32
+	add	%%data2, 0x20
 	vpsrld	%%regF, W16, (32-1)
 	vpslld	W16, W16, 1
 	vpor	%%regF, %%regF, W16
 	ROTATE_W
 
+;	vmovdqa	[%%data + ((%%memW - 0) & 15) * 32],%%regF
 	vmovdqa	[%%data + ((%%memW - 0) & 15) * 32],%%regF
 	vpaddd	%%regE, %%regE,%%regF
+	add	%%data, 0x20
 
 	PROLD_nd	%%regT,5, %%regF, %%regA
 	vpaddd	%%regE, %%regE,%%regT
@@ -385,15 +392,12 @@ align 16
 	lea	r15, [mh_data_p + 0x200] ; 512 byte offset
 %assign I 0
 %rep 16
-;	VMOVPS   T0,[mh_in_p + I*64+0*32]
-;	VMOVPS   T1,[mh_in_p + I*64+1*32]
 	VMOVPS   T0,[rax]
 	VMOVPS   T1,[rax+32]
 %ifn  I = 15 
 	add	rax, 64
 %endif
 	vpshufb	T0, T0, F
-;	vmovdqa	[mh_data_p +I*32+0*512],T0
 	vmovdqa	[rbx],T0
 	vpshufb	T1, T1, F
 	vmovdqa	[r15],T1 ; 512+32
@@ -401,7 +405,6 @@ align 16
 	add	rbx, 32
 	add	r15, 32
 %endif
-;	vmovdqa	[mh_data_p +I*32+1*512],T1
 %assign I (I+1)
 %endrep
 
@@ -427,10 +430,11 @@ align 16
 ;; perform 0-79 steps
 ;;
 	vpbroadcastq	K, [K00_19]
+	mov tmp6, mh_data_p
 ;; do rounds 0...15
  %assign I 0
  %rep 16
-	SHA1_STEP_00_15 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F0, mh_data_p
+	SHA1_STEP_00_15 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F0, tmp6
 	ROTATE_ARGS
 %assign I (I+1)
 %endrep
@@ -438,8 +442,11 @@ align 16
 ;; do rounds 16...19
 	vmovdqa	W16, [mh_data_p + ((16 - 16) & 15) * 32]
 	vmovdqa	W15, [mh_data_p + ((16 - 15) & 15) * 32]
+;	mov tmp6, mh_data_p
+	lea tmp5, [tmp6+0x100]
  %rep 4
-	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F0, mh_data_p
+;;	;SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F0, mh_data_p
+	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F0, tmp6, tmp5
 	ROTATE_ARGS
  %assign I (I+1)
  %endrep
@@ -447,15 +454,21 @@ align 16
 	PREFETCH_X [mh_in_p + pref+128*1]
 ;; do rounds 20...39
 	vpbroadcastq	K, [K20_39]
+;	mov tmp6, mh_data_p
+;	lea tmp5, [mh_data_p+0x100]
  %rep 20
-	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F1, mh_data_p
+;	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F1, mh_data_p
+	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F1, tmp6, tmp5
 	ROTATE_ARGS
  %assign I (I+1)
  %endrep
 ;; do rounds 40...59
 	vpbroadcastq	K, [K40_59]
+;	mov tmp6, mh_data_p
+;	lea tmp5, [mh_data_p+0x100]
  %rep 20
-	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F2, mh_data_p
+;	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F2, mh_data_p
+	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F2, tmp6, tmp5
 	ROTATE_ARGS
  %assign I (I+1)
  %endrep
@@ -463,8 +476,11 @@ align 16
         PREFETCH_X [mh_in_p + pref+128*3]
 ;; do rounds 60...79
 	vpbroadcastq	K, [K60_79]
+;	mov tmp6, mh_data_p
+;	lea tmp5, [mh_data_p+0x100]
  %rep 20
-	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F3, mh_data_p
+;	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F3, mh_data_p
+	SHA1_STEP_16_79 A,B,C,D,E, TMP,FUN, I, K, MAGIC_F3, tmp6, tmp5
 	ROTATE_ARGS
  %assign I (I+1)
  %endrep

@@ -170,162 +170,146 @@ default rel
 %macro FOUR_ROUNDS_AND_SCHED 0
 	;; compute s0 four at a time and s1 two at a time
 	;; compute W[-16] + W[-7] 4 at a time
-	movdqa  XTMP0, X3
-	mov     y0, e 			; y0 = e
-	ror     y0, (25-11)             ; y0 = e >> (25-11)
-	mov     y1, a                   ; y1 = a
-	palignr XTMP0, X2, 4            ; XTMP0 = W[-7]
-	ror     y1, (22-13)             ; y1 = a >> (22-13)
+	rorx     y0, e, (25-11)         ; y0 = e >> (25-11)
+	vpalignr XTMP0, X3, X2, 4       ; XTMP0 = W[-7]
+	rorx    y1, a, (22-13)          ; y1 = a >> (22-13)
 	xor     y0, e                   ; y0 = e ^ (e >> (25-11))
 	mov     y2, f                   ; y2 = f
-	ror     y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
-	movdqa  XTMP1, X1
+	rorx    y0, y0, (11-6)          ; y0 = (e >> (11-6)) ^ (e >> (25-6))
 	xor     y1, a                   ; y1 = a ^ (a >> (22-13)
 	xor     y2, g                   ; y2 = f^g
-	paddd   XTMP0, X0               ; XTMP0 = W[-7] + W[-16]
+	vpaddd   XTMP0, XTMP0,X0              ; XTMP0 = W[-7] + W[-16]
 	xor     y0, e                   ; y0 = e ^ (e >> (11-6)) ^ (e >> (25-6))
 	and     y2, e                   ; y2 = (f^g)&e
-	ror     y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
+	rorx     y1, y1, (13-2)         ; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	;; compute s0
-	palignr XTMP1, X0, 4            ; XTMP1 = W[-15]
+	vpalignr XTMP1, X1, X0, 4       ; XTMP1 = W[-15]
 	xor     y1, a                   ; y1 = a ^ (a >> (13-2)) ^ (a >> (22-2))
-	ror     y0, 6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
+	rorx     y0, y0,6               ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
 	xor     y2, g                   ; y2 = CH = ((f^g)&e)^g
-	movdqa  XTMP2, XTMP1            ; XTMP2 = W[-15]
-	ror     y1, 2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
+	rorx    y1, y1,2                ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
 	add     y2, y0                  ; y2 = S1 + CH
 	add     y2 , [rsp + _XFER]      ; y2 = k + w + S1 + CH
-	movdqa  XTMP3, XTMP1            ; XTMP3 = W[-15]
+	vmovdqa  XTMP3, XTMP1            ; XTMP3 = W[-15]
 	mov     y0, a                   ; y0 = a
 	add     h, y2                   ; h = h + S1 + CH + k + w
 	mov     y2, a                   ; y2 = a
-	pslld   XTMP1, (32-7)           ;
+	vpsrld   XTMP2, XTMP1,7         ;
+	vpslld   XTMP1, XTMP1,(32-7)           ;
 	or      y0, c                   ; y0 = a|c
 	add     d, h                    ; d = d + h + S1 + CH + k + w
 	and     y2, c                   ; y2 = a&c
-	psrld   XTMP2, 7                ;
 	and     y0, b                   ; y0 = (a|c)&b
 	add     h, y1                   ; h = h + S1 + CH + k + w + S0
-	por     XTMP1, XTMP2            ; XTMP1 = W[-15] ror 7
+	vpor    XTMP1, XTMP1, XTMP2            ; XTMP1 = W[-15] ror 7
 	or      y0, y2                  ; y0 = MAJ = (a|c)&b)|(a&c)
 	add     h, y0                   ; h = h + S1 + CH + k + w + S0 + MAJ
 
 	ROTATE_ARGS
-	movdqa  XTMP2, XTMP3            ; XTMP2 = W[-15]
-	mov     y0, e                   ; y0 = e
-	mov     y1, a                   ; y1 = a
-	movdqa  XTMP4, XTMP3            ; XTMP4 = W[-15]
-	ror     y0, (25-11)             ; y0 = e >> (25-11)
+	rorx     y0,e, (25-11)             ; y0 = e >> (25-11)
 	xor     y0, e                   ; y0 = e ^ (e >> (25-11))
 	mov     y2, f                   ; y2 = f
-	ror     y1, (22-13)             ; y1 = a >> (22-13)
-	pslld   XTMP3, (32-18)          ;
+	rorx     y1,a, (22-13)             ; y1 = a >> (22-13)
+	vpsrld   XTMP2, XTMP3, 18               ;
+	vpsrld   XTMP4, XTMP3, 3                ; XTMP4 = W[-15] >> 3
+	vpslld   XTMP3, XTMP3,(32-18)          ;
 	xor     y1, a                   ; y1 = a ^ (a >> (22-13)
-	ror     y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
+	rorx     y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
 	xor     y2, g                   ; y2 = f^g
-	psrld   XTMP2, 18               ;
-	ror     y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
+	rorx     y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	xor     y0, e                   ; y0 = e ^ (e >> (11-6)) ^ (e >> (25-6))
 	and     y2, e                   ; y2 = (f^g)&e
-	ror     y0, 6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
-	pxor    XTMP1, XTMP3
+	rorx     y0, y0, 6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
+	vpxor    XMTP1, XTMP1, XTMP3
 	xor     y1, a                   ; y1 = a ^ (a >> (13-2)) ^ (a >> (22-2))
 	xor     y2, g                   ; y2 = CH = ((f^g)&e)^g
-	psrld   XTMP4, 3                ; XTMP4 = W[-15] >> 3
 	add     y2, y0                  ; y2 = S1 + CH
 	add     y2, [rsp + (1*4 + _XFER)] ; y2 = k + w + S1 + CH
-	ror     y1, 2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
-	pxor    XTMP1, XTMP2            ; XTMP1 = W[-15] ror 7 ^ W[-15] ror 18
+	rorx    y1, y1,2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
+	vpxor    XTMP1, XTMP1, XTMP2            ; XTMP1 = W[-15] ror 7 ^ W[-15] ror 18
 	mov     y0, a                   ; y0 = a
 	add     h, y2                   ; h = h + S1 + CH + k + w
 	mov     y2, a                   ; y2 = a
-	pxor    XTMP1, XTMP4            ; XTMP1 = s0
+	vpxor    XTMP1, XTMP1, XTMP4            ; XTMP1 = s0
 	or      y0, c                   ; y0 = a|c
 	add     d, h                    ; d = d + h + S1 + CH + k + w
 	and     y2, c                   ; y2 = a&c
 	;; compute low s1
-	pshufd  XTMP2, X3, 11111010B    ; XTMP2 = W[-2] {BBAA}
+	vpshufd  XTMP2,XTMP2, X3, 11111010B    ; XTMP2 = W[-2] {BBAA}
 	and     y0, b 			; y0 = (a|c)&b
 	add     h, y1                   ; h = h + S1 + CH + k + w + S0
-	paddd   XTMP0, XTMP1            ; XTMP0 = W[-16] + W[-7] + s0
+	vpaddd  XTMP0, XTMP0, XTMP1            ; XTMP0 = W[-16] + W[-7] + s0
 	or      y0, y2                  ; y0 = MAJ = (a|c)&b)|(a&c)
 	add     h, y0                   ; h = h + S1 + CH + k + w + S0 + MAJ
 
 	ROTATE_ARGS
-	movdqa  XTMP3, XTMP2            ; XTMP3 = W[-2] {BBAA}
-	mov     y0, e                   ; y0 = e
-	mov     y1, a                   ; y1 = a
-	ror     y0, (25-11)             ; y0 = e >> (25-11)
-	movdqa  XTMP4, XTMP2            ; XTMP4 = W[-2] {BBAA}
+	rorx    y0, e, (25-11)             ; y0 = e >> (25-11)
 	xor     y0, e                   ; y0 = e ^ (e >> (25-11))
-	ror     y1, (22-13)             ; y1 = a >> (22-13)
+	rorx     y1, a,(22-13)           ; y1 = a >> (22-13)
 	mov     y2, f                   ; y2 = f
 	xor     y1, a                   ; y1 = a ^ (a >> (22-13)
-	ror     y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
-	psrlq   XTMP2, 17               ; XTMP2 = W[-2] ror 17 {xBxA}
+	rorx     y0, y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
+	vpsrlq   XTMP3,XTMP2, 19        ; XTMP3 = W[-2] ror 19 {xBxA}
+	vpsrld   XTMP4,XTMP2, 10               ; XTMP4 = W[-2] >> 10 {BBAA}
+	vpsrlq   XTMP2,XTMP2, 17               ; XTMP2 = W[-2] ror 17 {xBxA}
 	xor     y2, g                   ; y2 = f^g
-	psrlq   XTMP3, 19               ; XTMP3 = W[-2] ror 19 {xBxA}
 	xor     y0, e                   ; y0 = e ^ (e >> (11-6)) ^ (e >> (25-6))
 	and     y2, e                   ; y2 = (f^g)&e
-	psrld   XTMP4, 10               ; XTMP4 = W[-2] >> 10 {BBAA}
-	ror     y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
+	rorx    y1, y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	xor     y1, a                   ; y1 = a ^ (a >> (13-2)) ^ (a >> (22-2))
 	xor     y2, g                   ; y2 = CH = ((f^g)&e)^g
-	ror     y0, 6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
-	pxor    XTMP2, XTMP3
+	rorx    y0, y0,6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
+	vpxor    XTMP2,XTMP2, XTMP3
 	add     y2, y0                  ; y2 = S1 + CH
-	ror     y1, 2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
+	rorx    y1, y1, 2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
 	add     y2, [rsp + (2*4 + _XFER)] ; y2 = k + w + S1 + CH
-	pxor    XTMP4, XTMP2            ; XTMP4 = s1 {xBxA}
+	vpxor    XTMP4,XTMP4, XTMP2            ; XTMP4 = s1 {xBxA}
 	mov     y0, a                   ; y0 = a
 	add     h, y2                   ; h = h + S1 + CH + k + w
 	mov     y2, a                   ; y2 = a
-	pshufb  XTMP4, SHUF_00BA        ; XTMP4 = s1 {00BA}
+	vpshufb  XTMP4, XTMP4, SHUF_00BA        ; XTMP4 = s1 {00BA}
 	or      y0, c                   ; y0 = a|c
 	add     d, h                    ; d = d + h + S1 + CH + k + w
 	and     y2, c                   ; y2 = a&c
-	paddd   XTMP0, XTMP4            ; XTMP0 = {..., ..., W[1], W[0]}
+	vpaddd  XTMP0, XTMP0, XTMP4            ; XTMP0 = {..., ..., W[1], W[0]}
 	and     y0, b                   ; y0 = (a|c)&b
 	add     h, y1                   ; h = h + S1 + CH + k + w + S0
 	;; compute high s1
-	pshufd  XTMP2, XTMP0, 01010000B ; XTMP2 = W[-2] {BBAA}
+	vpshufd  XTMP2, XTMP0, 01010000B ; XTMP2 = W[-2] {BBAA}
 	or      y0, y2                  ; y0 = MAJ = (a|c)&b)|(a&c)
 	add     h, y0                   ; h = h + S1 + CH + k + w + S0 + MAJ
 
 	ROTATE_ARGS
-	movdqa  XTMP3, XTMP2            ; XTMP3 = W[-2] {DDCC}
-	mov     y0, e                   ; y0 = e
-	ror     y0, (25-11)             ; y0 = e >> (25-11)
-	mov     y1, a                   ; y1 = a
-	movdqa  X0, XTMP2               ; X0    = W[-2] {DDCC}
-	ror     y1, (22-13)             ; y1 = a >> (22-13)
+	vmovdqa  XTMP3, XTMP2            ; XTMP3 = W[-2] {DDCC}
+	rorx     y0,e, (25-11)          ; y0 = e >> (25-11)
+	rorx     y1,a, (22-13)          ; y1 = a >> (22-13)
 	xor     y0, e                   ; y0 = e ^ (e >> (25-11))
 	mov     y2, f                   ; y2 = f
-	ror     y0, (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
-	psrlq   XTMP2, 17               ; XTMP2 = W[-2] ror 17 {xDxC}
+	rorx     y0, y0 (11-6)              ; y0 = (e >> (11-6)) ^ (e >> (25-6))
+	vpsrlq   XTMP3, XTMP2,19        ; XTMP3 = W[-2] ror 19 {xDxC}
 	xor     y1, a                   ; y1 = a ^ (a >> (22-13)
+	vpsrld   X0,XTMP2, 10           ; X0 = W[-2] >> 10 {DDCC}
 	xor     y2, g                   ; y2 = f^g
-	psrlq   XTMP3, 19               ; XTMP3 = W[-2] ror 19 {xDxC}
+	vpsrlq   XTMP2, XTMP2, 17       ; XTMP2 = W[-2] ror 17 {xDxC}
 	xor     y0, e                   ; y0 = e ^ (e >> (11-6)) ^ (e >> (25
 	and     y2, e                   ; y2 = (f^g)&e
-	ror     y1, (13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
-	psrld   X0, 10                  ; X0 = W[-2] >> 10 {DDCC}
+	rorx     y1, y1,(13-2)              ; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	xor     y1, a                   ; y1 = a ^ (a >> (13-2)) ^ (a >> (22
-	ror     y0, 6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>2
+	rorx     y0, y0,6                   ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>2
 	xor     y2, g                   ; y2 = CH = ((f^g)&e)^g
-	pxor    XTMP2, XTMP3            ;
-	ror     y1, 2                   ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>2
+	vpxor    XTMP2,XTMP2, XTMP3           ;
+	rorx     y1, y1, 2              ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>2
 	add     y2, y0                  ; y2 = S1 + CH
 	add     y2, [rsp + (3*4 + _XFER)] ; y2 = k + w + S1 + CH
-	pxor    X0, XTMP2               ; X0 = s1 {xDxC}
+	vpxor    X0,X0, XTMP2               ; X0 = s1 {xDxC}
 	mov     y0, a                   ; y0 = a
 	add     h, y2                   ; h = h + S1 + CH + k + w
 	mov     y2, a                   ; y2 = a
-	pshufb  X0, SHUF_DC00           ; X0 = s1 {DC00}
+	vpshufb  X0,X0, SHUF_DC00           ; X0 = s1 {DC00}
 	or      y0, c                   ; y0 = a|c
 	add     d, h                    ; d = d + h + S1 + CH + k + w
 	and     y2, c                   ; y2 = a&c
-	paddd   X0, XTMP0               ; X0 = {W[3], W[2], W[1], W[0]}
+	vpaddd   X0,X0, XTMP0               ; X0 = {W[3], W[2], W[1], W[0]}
 	and     y0, b                   ; y0 = (a|c)&b
 	add     h, y1                   ; h = h + S1 + CH + k + w + S0
 	or      y0, y2                  ; y0 = MAJ = (a|c)&b)|(a&c)
@@ -337,23 +321,21 @@ default rel
 
 ;; input is [rsp + _XFER + %1 * 4]
 %macro DO_ROUND 1
-	mov     y0, e                 ; y0 = e
-	ror     y0, (25-11)           ; y0 = e >> (25-11)
-	mov     y1, a                 ; y1 = a
+	rorx     y0, e, (25-11)           ; y0 = e >> (25-11)
 	xor     y0, e                 ; y0 = e ^ (e >> (25-11))
-	ror     y1, (22-13)           ; y1 = a >> (22-13)
+	rorx     y1, a, (22-13)       ; y1 = a >> (22-13)
 	mov     y2, f                 ; y2 = f
 	xor     y1, a                 ; y1 = a ^ (a >> (22-13)
-	ror     y0, (11-6)            ; y0 = (e >> (11-6)) ^ (e >> (25-6))
+	rorx     y0, y0,(11-6)            ; y0 = (e >> (11-6)) ^ (e >> (25-6))
 	xor     y2, g                 ; y2 = f^g
 	xor     y0, e                 ; y0 = e ^ (e >> (11-6)) ^ (e >> (25-6))
-	ror     y1, (13-2)            ; y1 = (a >> (13-2)) ^ (a >> (22-2))
+	rorx     y1,y1, (13-2)            ; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	and     y2, e                 ; y2 = (f^g)&e
 	xor     y1, a                 ; y1 = a ^ (a >> (13-2)) ^ (a >> (22-2))
-	ror     y0, 6                 ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
+	rorx     y0, y0,6                 ; y0 = S1 = (e>>6) & (e>>11) ^ (e>>25)
 	xor     y2, g                 ; y2 = CH = ((f^g)&e)^g
 	add     y2, y0                ; y2 = S1 + CH
-	ror     y1, 2                 ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
+	rorx     y1, y1, 2                 ; y1 = S0 = (a>>2) ^ (a>>13) ^ (a>>22)
 	%xdefine offset (%1 * 4 + _XFER)
 	add     y2, [rsp + offset]    ; y2 = k + w + S1 + CH
 	mov     y0, a                 ; y0 = a
@@ -399,6 +381,7 @@ sha256_opt_x1:
 	mov     [rsp + _GPR_SAVE + 8*8], rdx
 
 	shl     NBLK, 6 		 ; convert to bytes
+	test    NBLK,NBLK
 	jz      done_hash
 
 	; detach idx from nlanx4
@@ -429,9 +412,9 @@ sha256_opt_x1:
 	mov     f, [TMP + 2*NLANX4]
 	mov     h, [TMP + 4*NLANX4]
 
-	movdqa  BYTE_FLIP_MASK, [PSHUFFLE_BYTE_FLIP_MASK]
-	movdqa  SHUF_00BA, [_SHUF_00BA]
-	movdqa  SHUF_DC00, [_SHUF_DC00]
+	vmovdqa  BYTE_FLIP_MASK, [PSHUFFLE_BYTE_FLIP_MASK]
+	vmovdqa  SHUF_00BA, [_SHUF_00BA]
+	vmovdqa  SHUF_DC00, [_SHUF_DC00]
 
 	mov     INP, [rsp + _INP]
 loop0:
@@ -449,39 +432,36 @@ loop0:
 	mov     SRND, 3
 
 loop1:
-	movdqa  XFER, [TBL]
-	paddd   XFER, X0
-	movdqa  [rsp + _XFER], XFER
+	vpaddd   XFER, X0, [TBL]
+	vmovdqa  [rsp + _XFER], XFER
 	FOUR_ROUNDS_AND_SCHED
 
-	movdqa  XFER, [TBL + 1*16]
-	paddd   XFER, X0
-	movdqa  [rsp + _XFER], XFER
+	vpaddd   XFER, X0, [TBL + 1*16]
+	vmovdqa  [rsp + _XFER], XFER
 	FOUR_ROUNDS_AND_SCHED
 
-	movdqa  XFER, [TBL + 2*16]
-	paddd   XFER, X0
-	movdqa  [rsp + _XFER], XFER
+	vpaddd   XFER, X0, [TBL + 2*16]
+	vmovdqa  [rsp + _XFER], XFER
 	FOUR_ROUNDS_AND_SCHED
 
-	movdqa  XFER, [TBL + 3*16]
-	paddd   XFER, X0
-	movdqa  [rsp + _XFER], XFER
+
+	vpaddd   XFER, X0, [TBL + 3*16]
+	vmovdqa  [rsp + _XFER], XFER
 	add     TBL, 4*16
 	FOUR_ROUNDS_AND_SCHED
 
 	sub     SRND, 1
-	jne     loop1
+	jnz     loop1
 
 	mov     SRND, 2
 loop2:
-	paddd   X0, [TBL]
-	movdqa  [rsp + _XFER], X0
+	vpaddd   X0, [TBL]
+	vmovdqa  [rsp + _XFER], X0
 	DO_ROUND        0
 	DO_ROUND        1
 	DO_ROUND        2
 	DO_ROUND        3
-	paddd   X1, [TBL + 1*16]
+	vpaddd   X1, [TBL + 1*16]
 	movdqa  [rsp + _XFER], X1
 	add     TBL, 2*16
 	DO_ROUND        0
@@ -489,8 +469,8 @@ loop2:
 	DO_ROUND        2
 	DO_ROUND        3
 
-	movdqa  X0, X2
-	movdqa  X1, X3
+	vmovdqa  X0, X2
+	vmovdqa  X1, X3
 
 	sub     SRND, 1
 	jne     loop2

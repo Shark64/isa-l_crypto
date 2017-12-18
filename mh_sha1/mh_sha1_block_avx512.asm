@@ -31,6 +31,7 @@
 ;;
 
 %include "reg_sizes.asm"
+;%%use smartalign
 
 %ifdef HAVE_AS_KNOWS_AVX512
 default rel
@@ -127,6 +128,7 @@ default rel
  %define arg1  rsi
  %define arg2  rdx
  %define arg3  rcx
+ %define arg3.w  ecx
 
  %define arg4  r8
  %define arg5  r9
@@ -158,6 +160,7 @@ default rel
  %define arg1   rdx
  %define arg2   r8
  %define arg3   r9
+ %define arg3.w   r9d
 
  %define arg4   r10
  %define arg5   r11
@@ -213,7 +216,8 @@ default rel
  %endmacro
 %endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-%define loops 		arg3
+;define loops 		arg3
+%define loops 		arg3.w
 ;variables of mh_sha1
 %define mh_in_p  	arg0
 %define mh_digests_p 	arg1
@@ -254,7 +258,7 @@ func(mh_sha1_block_avx512)
 	; save rsp
 	mov	RSP_SAVE, rsp
 
-	cmp	loops, 0
+	test	loops, loops
 	jle	.return
 
 	; align rsp to 64 Bytes needed by avx512
@@ -267,8 +271,9 @@ func(mh_sha1_block_avx512)
 	VMOVPS  HH3, [mh_digests_p + 64*3]
 	VMOVPS  HH4, [mh_digests_p + 64*4]
 	;a mask used to transform to big-endian data
-	vmovdqa64 SHUF_MASK, [PSHUFFLE_BYTE_FLIP_MASK]
+	vpbroadcastq SHUF_MASK, [PSHUFFLE_BYTE_FLIP_MASK]
 
+align 16
 .block_loop:
 	;transform to big-endian data and store on aligned_frame
 	;using extra 16 ZMM registers instead of stack
@@ -302,13 +307,13 @@ func(mh_sha1_block_avx512)
 	MSG_SCHED_ROUND_16_79  APPEND(W,J), APPEND(W,K), APPEND(W,L), APPEND(W,M)
 	%endif
 	%if N = 19
-		vmovdqa32	KT, [K20_39]
+		vpbroadcastq	KT, [K20_39]
 		%assign I 0x96
 	%elif N = 39
-		vmovdqa32	KT, [K40_59]
+		vpbroadcastq	KT, [K40_59]
 		%assign I 0xE8
 	%elif N = 59
-		vmovdqa32	KT, [K60_79]
+		vpbroadcastq	KT, [K60_79]
 		%assign I 0x96
 	%endif
 	%if N % 10 = 9
@@ -346,53 +351,53 @@ func(mh_sha1_block_avx512)
 	ret
 
 
-section .data align=64
+section .rodata align=64
 
 align 64
 PSHUFFLE_BYTE_FLIP_MASK: dq 0x0405060700010203
-			 dq 0x0c0d0e0f08090a0b
-			 dq 0x0405060700010203
-			 dq 0x0c0d0e0f08090a0b
-			 dq 0x0405060700010203
-			 dq 0x0c0d0e0f08090a0b
-			 dq 0x0405060700010203
-			 dq 0x0c0d0e0f08090a0b
+;			 dq 0x0c0d0e0f08090a0b
+;			 dq 0x0405060700010203
+;			 dq 0x0c0d0e0f08090a0b
+;			 dq 0x0405060700010203
+;			 dq 0x0c0d0e0f08090a0b
+;			 dq 0x0405060700010203
+;			 dq 0x0c0d0e0f08090a0b
 
 K00_19:			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-			dq 0x5A8279995A827999
-
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;			dq 0x5A8279995A827999
+;
 K20_39:			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-			dq  0x6ED9EBA16ED9EBA1
-
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;			dq  0x6ED9EBA16ED9EBA1
+;
 K40_59:			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-			dq  0x8F1BBCDC8F1BBCDC
-
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;			dq  0x8F1BBCDC8F1BBCDC
+;
 K60_79:			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
-			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
+;			dq  0xCA62C1D6CA62C1D6
 
 %else
 %ifidn __OUTPUT_FORMAT__, win64

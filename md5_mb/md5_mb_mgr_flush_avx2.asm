@@ -111,14 +111,15 @@ md5_mb_mgr_flush_avx2:
 %endif
 
 	mov	DWORD(num_lanes_inuse), [state + _num_lanes_inuse]
-	cmp	num_lanes_inuse, 0
+	test	num_lanes_inuse, num_lanes_inuse
 	jz	return_null
 
 	; find a lane with a non-null job
 	xor	idx, idx
+	xor	ebx, ebx
 %assign I 1
 %rep 15
-	cmp	qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane], 0
+	cmp	rbx, qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane]
 	cmovne	idx, [APPEND(lane_,I)]
 %assign I (I+1)
 %endrep
@@ -129,7 +130,7 @@ copy_lane_data:
 
 %assign I 0
 %rep 16
-	cmp	qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane], 0
+	cmp	rbx, qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane] ; rbx=0
 	jne	APPEND(skip_,I)
 	mov	[state + _args + _data_ptr + 8*I], tmp
 	mov 	dword [state + _lens + 4*I], 0xFFFFFFFF

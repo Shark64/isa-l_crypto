@@ -39,6 +39,7 @@ ALIGNMODE P6
 %ifidn __OUTPUT_FORMAT__, elf64
  %define arg0  rdi
  %define arg1  rsi
+ %define arg1.w  esi
  %define arg2  rdx
  %define arg3  rcx
  %define arg4  r8
@@ -46,9 +47,11 @@ ALIGNMODE P6
 
  %define arg6  r10
  %define arg7  r11
+ %define arg7.w  r11d
  %define arg8  r12		; must be saved and loaded
  %define tmp1  rbp		; must be saved and loaded
  %define tmp1.w  ebp		; must be saved and loaded
+ %define tmp1.b  bpl		; must be saved and loaded
  %define tmp2  rbx		; must be saved and loaded
  %define tmp2.w  ebx		; must be saved and loaded
  %define tmp2.b  bl		; must be saved and loaded
@@ -91,12 +94,14 @@ ALIGNMODE P6
 %ifidn __OUTPUT_FORMAT__, win64
  %define arg0   rcx
  %define arg1   rdx
+ %define arg1.w   edx
  %define arg2   r8
  %define arg3   r9
  %define arg4   r12 		; must be saved and loaded
  %define arg5   r13 		; must be saved and loaded
  %define arg6   r14 		; must be saved and loaded
  %define arg7   r15 		; must be saved and loaded
+ %define arg7.w   r15d 		; must be saved and loaded
  %define arg8   rbx 		; must be saved and loaded
  %define tmp1   r10
  %define tmp2   r11
@@ -139,6 +144,7 @@ ALIGNMODE P6
 
 %define idx   arg0
 %define max   arg1
+%define max.w   arg1.w
 %define t1    arg2
 %define t2    arg3
 %define b1    arg4
@@ -200,25 +206,28 @@ align 16
 	xor	hash, z
 	pext	x, hash, mask
 	cmp	x, trigger
-	je	.ret_0
-
+;	je	.ret_0
+	sete	tmp2.b
 	rorx	hash, hash, 0x3f
 	mov	z, [t1 + a * 8]
 	xor	z, [t2 + h * 8]
 	xor	hash, z
 	pext	y, hash, mask
 	cmp	y, trigger
-	je	.ret_1
+	sete	tmp1.b
+	add	tmp2.b, tmp1.b
+	jnz	.ret_1
+;	je	.ret_1
 
-	add	pos, 2
+	add	pos.w, 2
 	add	b1, 2
 	add	b2, 2
-	cmp	pos, max
+	cmp	pos.w, max.w
 	jle	.loop2
 
 .less_than_2:
-	add	max, 1
-	cmp	pos, max
+	add	max.w, 1
+	cmp	pos.w, max.w
 	jg	.ret_0
 	rorx	hash, hash, 0x3f
 	movzx	x.w, byte [b1]
@@ -226,8 +235,10 @@ align 16
 	mov	z, [t1 + x * 8]
 	xor	z, [t2 + y * 8]
 	xor	hash, z
-.ret_1:	add	pos, 1
 align 16
+.ret_1:	lea	tmp2.w, [pos+1]
+	test	tmp1.b, tmp1.b
+	cmovnz	pos.w, tmp2.w
 .ret_0:	mov	dword [idx], pos.w
 	mov	rax, hash
 	FUNC_RESTORE
