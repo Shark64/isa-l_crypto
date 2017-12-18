@@ -42,7 +42,8 @@ void aes_gcm_pre_128(const void *key, struct gcm_key_data *key_data)
 
 void aes_gcm_pre_256(const void *key, struct gcm_key_data *key_data)
 {
-	aes_keyexp_128_enc(key, key_data->expanded_keys);
+	uint8_t tmp_exp_key[GCM_ENC_KEY_LEN * GCM_KEY_SETS];
+	aes_keyexp_256((const uint8_t *)key, (uint8_t *) key_data->expanded_keys, tmp_exp_key);
 	aes_gcm_precomp_256(key_data);
 }
 
@@ -233,6 +234,12 @@ struct slver {
 };
 
 // Version info
+struct slver aes_gcm_pre_128_slver_000002c7;
+struct slver aes_gcm_pre_128_slver = { 0x02c7, 0x00, 0x00 };
+
+struct slver aes_gcm_pre_256_slver_000002d7;
+struct slver aes_gcm_pre_256_slver = { 0x02d7, 0x00, 0x00 };
+
 struct slver aesni_gcm128_pre_slver_00000287;
 struct slver aesni_gcm128_pre_slver = { 0x0287, 0x00, 0x00 };
 

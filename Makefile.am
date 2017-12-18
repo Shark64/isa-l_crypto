@@ -1,4 +1,4 @@
-EXTRA_DIST = autogen.sh Makefile.unx make.inc Makefile.nmake isa-l_crypto.def LICENSE
+EXTRA_DIST = autogen.sh Makefile.unx make.inc Makefile.nmake isa-l_crypto.def LICENSE README.md Doxyfile
 CLEANFILES =
 LDADD =
 AM_MAKEFLAGS = --no-print-directory
@@ -35,7 +35,7 @@ include rolling_hash/Makefile.am
 
 # LIB version info not necessarily the same as package version
 LIBISAL_CURRENT=2
-LIBISAL_REVISION=19
+LIBISAL_REVISION=20
 LIBISAL_AGE=0
 
 lib_LTLIBRARIES = libisal_crypto.la
@@ -109,3 +109,8 @@ isa-l_crypto.h:
 	@echo ''			>> $@
 	@for unit in $(sort $(extern_hdrs)); do echo "#include <isa-l_crypto/$$unit>" | sed -e 's;include/;;' >> $@; done
 	@echo '#endif //_ISAL_CRYPTO_H_'	>> $@
+
+doc: isa-l_crypto.h
+	(cat Doxyfile; echo 'PROJECT_NUMBER=${VERSION}') | doxygen -
+	$(MAKE) -C generated_doc/latex &> generated_doc/latex_build_api.log
+	cp generated_doc/latex/refman.pdf isa-l_crypto_api_${VERSION}.pdf
