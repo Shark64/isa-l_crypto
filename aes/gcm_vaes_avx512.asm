@@ -49,15 +49,11 @@
 %define FN_NAME(x,y) _aes_gcm_ %+ x %+ _256 %+ y %+ vaes_avx512 %+ FUNCT_EXTENSION
 %endif
 
-%if (AS_FEATURE_LEVEL) >= 10
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_precomp_128_vaes_avx512 /
 ;       _aes_gcm_precomp_192_vaes_avx512 /
 ;       _aes_gcm_precomp_256_vaes_avx512
-;       (struct gcm_key_data *key_data)
+;       (struct isal_gcm_key_data *key_data)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 %ifnidn FUNCT_EXTENSION, _nt
 global FN_NAME(precomp,_)
@@ -99,8 +95,8 @@ exit_precomp:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_init_128_vaes_avx512 / _aes_gcm_init_192_vaes_avx512 / _aes_gcm_init_256_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *iv,
 ;        const u8 *aad,
 ;        u64      aad_len);
@@ -126,8 +122,8 @@ FN_NAME(init,_):
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_enc_128_update_vaes_avx512 / _aes_gcm_enc_192_update_vaes_avx512 /
 ;       _aes_gcm_enc_256_update_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *out,
 ;        const u8 *in,
 ;        u64      msg_len);
@@ -148,8 +144,8 @@ FN_NAME(enc,_update_):
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_dec_128_update_vaes_avx512 / _aes_gcm_dec_192_update_vaes_avx512 /
 ;       _aes_gcm_dec_256_update_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *out,
 ;        const u8 *in,
 ;        u64      msg_len);
@@ -170,8 +166,8 @@ FN_NAME(dec,_update_):
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_enc_128_finalize_vaes_avx512 / _aes_gcm_enc_192_finalize_vaes_avx512 /
 ;       _aes_gcm_enc_256_finalize_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *auth_tag,
 ;        u64      auth_tag_len);
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -193,8 +189,8 @@ FN_NAME(enc,_finalize_):
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_dec_128_finalize_vaes_avx512 / _aes_gcm_dec_192_finalize_vaes_avx512
 ;       _aes_gcm_dec_256_finalize_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *auth_tag,
 ;        u64      auth_tag_len);
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -216,8 +212,8 @@ FN_NAME(dec,_finalize_):
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_enc_128_vaes_avx512 / _aes_gcm_enc_192_vaes_avx512 / _aes_gcm_enc_256_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *out,
 ;        const u8 *in,
 ;        u64      msg_len,
@@ -246,8 +242,8 @@ FN_NAME(enc,_):
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;void   _aes_gcm_dec_128_vaes_avx512 / _aes_gcm_dec_192_vaes_avx512 / _aes_gcm_dec_256_vaes_avx512
-;       (const struct gcm_key_data *key_data,
-;        struct gcm_context_data *context_data,
+;       (const struct isal_gcm_key_data *key_data,
+;        struct isal_gcm_context_data *context_data,
 ;        u8       *out,
 ;        const u8 *in,
 ;        u64      msg_len,
@@ -273,10 +269,3 @@ FN_NAME(dec,_):
 %endif ;; SAFE_DATA
         FUNC_RESTORE
         ret
-
-%else  ; Assembler doesn't understand these opcodes. Add empty symbol for windows.
-%ifidn __OUTPUT_FORMAT__, win64
-global no_ %+ FN_NAME(avx512,_)
-no_ %+ FN_NAME(avx512,_) %+ :
-%endif
-%endif ; (AS_FEATURE_LEVEL) >= 10

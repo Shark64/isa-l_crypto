@@ -81,7 +81,17 @@ v2.7
 ================================================================================
 Unreleased
 
+* Added new API including parameter checking (starting with isal_ prefix).
+
+* Added new API returning the library version.
+
+* Added FIPS mode, including self tests in NIST approved algorithms (more information in https://github.com/intel/isa-l_crypto/blob/master/FIPS.md).
+
+* Deprecated previous API in favour of new API (more information in https://github.com/intel/isa-l_crypto/wiki/New-API-introduced-from-v2.25).
+
 * Optimized AES-GCM for AVX512-VAES x86 implementation.
+
+* Optimized SM3 for AVX512 x86 implementation.
 
 * Optimized MD5 and SM3 for aarch64.
 
@@ -92,6 +102,10 @@ Unreleased
 * Optimized multi-hash SHA1 for aarch64.
 
 * Added ACVP test applications for AES-CBC, AES-GCM, AES-XTS and SHA1/256/512.
+
+* Removed YASM support, so only NASM assembler is supported for x86.
+
+* Bumped minimum NASM version to 2.14.01, which supports all x86 ISA used in this library.
 
 v2.24
 

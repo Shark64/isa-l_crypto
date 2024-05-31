@@ -29,6 +29,7 @@ Also see:
   isa-l crypto.
 * [Contributing](CONTRIBUTING.md).
 * [Security Policy](SECURITY.md).
+* [FIPS Mode](FIPS.md).
 
 Building ISA-L
 --------------
@@ -36,8 +37,7 @@ Building ISA-L
 ### Prerequisites
 
 x86_64:
-* Assembler: nasm v2.11.01 or later (nasm v2.13 or better suggested for building in AVX512 support)
-  or yasm version 1.2.0 or later.
+* Assembler: nasm v2.14.01 or later
 * Compiler: gcc, clang, icc or VC compiler.
 * Make: GNU 'make' or 'nmake' (Windows).
 * Optional: Building with autotools requires autoconf/automake packages.

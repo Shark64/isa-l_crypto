@@ -1,5 +1,5 @@
 ########################################################################
-#  Copyright(c) 2011-2017 Intel Corporation All rights reserved.
+#  Copyright(c) 2024 Intel Corporation All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions
@@ -27,32 +27,8 @@
 #  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ########################################################################
 
-tests 		= 	md5_mb_over_4GB_test.exe sha1_mb_over_4GB_test.exe \
-sha256_mb_over_4GB_test.exe sha512_mb_over_4GB_test.exe
+lsrc +=	misc/version.c
 
-INCLUDES 	= 	-I../../include
-LINKFLAGS 	= 	/nologo
-INCLUDES 	= 	$(INCLUDES) -Ic:\OpenSSL-Win64\include
-CFLAGS   	= 	-O2 -D NDEBUG /nologo -D_USE_MATH_DEFINES -Qstd=c99 $(INCLUDES) /c -DNO_COMPAT_ISAL_CRYPTO_API_2_24
-LINKFLAGS 	= 	$(LINKFLAGS) /libpath:c:\OpenSSL-Win64\lib
-LIBS 		= 	../../isa-l_crypto.lib
-DLL 		= 	isa-l_crypto.dll
+extern_hdrs	+= include/isal_crypto_api.h
 
-tests: lib $(tests)
-$(tests): $(@B).obj
-	link /out:$@ $(LINKFLAGS) libcrypto.lib $(LIBS) $*.obj
-%.obj: %.c
-	$(CC) $(CFLAGS) -Fo$@ $?
-
-lib:
-	cd ../../ && nmake -f Makefile.nmake
-	cd ../../ && copy $(DLL) "tests\extended"
-
-test: $(tests)
-	!$?
-	echo ALL PASS
-
-clean:
-	-if exist *.obj del *.obj
-	-if exist *.exe del *.exe
-	-if exist *.dll del *.dll
+check_tests	+= misc/version_test

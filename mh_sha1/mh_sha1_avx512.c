@@ -30,8 +30,6 @@
 #include <string.h>
 #include "mh_sha1_internal.h"
 
-#ifdef HAVE_AS_KNOWS_AVX512
-
 /***************mh_sha1_update***********/
 // mh_sha1_update_avx512.c
 #define MH_SHA1_UPDATE_FUNCTION _mh_sha1_update_avx512
@@ -42,7 +40,7 @@
 
 /***************mh_sha1_finalize AND mh_sha1_tail***********/
 // mh_sha1_tail is used to calculate the last incomplete src data block
-// mh_sha1_finalize is a mh_sha1_ctx wrapper of mh_sha1_tail
+// mh_sha1_finalize is a isal_mh_sha1_ctx wrapper of mh_sha1_tail
 // mh_sha1_finalize_avx512.c and mh_sha1_tail_avx512.c
 #define MH_SHA1_FINALIZE_FUNCTION _mh_sha1_finalize_avx512
 #define MH_SHA1_TAIL_FUNCTION     _mh_sha1_tail_avx512
@@ -66,5 +64,3 @@ struct slver _mh_sha1_update_avx512_slver = { 0x027c, 0x00, 0x06 };
 // mh_sha1_finalize version info
 struct slver _mh_sha1_finalize_avx512_slver_0600027d;
 struct slver _mh_sha1_finalize_avx512_slver = { 0x027d, 0x00, 0x06 };
-
-#endif // HAVE_AS_KNOWS_AVX512

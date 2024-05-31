@@ -41,6 +41,7 @@ include mh_sha1_murmur3_x64_128/Makefile.am
 include mh_sha256/Makefile.am
 include rolling_hash/Makefile.am
 include sm3_mb/Makefile.am
+include misc/Makefile.am
 if CPU_X86_64
 include aes/Makefile.am
 endif
@@ -109,10 +110,7 @@ test: $(addsuffix .run,$(unit_tests))
 	$<
 	@echo Completed run: $<
 
-# Support for yasm/nasm
-if USE_YASM
-  as_filter = ${srcdir}/tools/yasm-filter.sh
-endif
+# Support for nasm
 if USE_NASM
   as_filter = ${srcdir}/tools/nasm-filter.sh
 endif
@@ -120,14 +118,14 @@ if CPU_AARCH64
   as_filter = $(CC) -D__ASSEMBLY__
 endif
 CCAS = $(as_filter)
-EXTRA_DIST += tools/yasm-filter.sh tools/nasm-filter.sh
-EXTRA_DIST += tools/yasm-cet-filter.sh tools/nasm-cet-filter.sh
+EXTRA_DIST += tools/nasm-filter.sh
+EXTRA_DIST += tools/nasm-cet-filter.sh
 
 AM_CFLAGS = ${my_CFLAGS} ${INCLUDE} $(src_include) ${D}
 if CPU_AARCH64
-AM_CCASFLAGS = ${yasm_args} ${INCLUDE} $(src_include) ${D}
+AM_CCASFLAGS = ${asm_args} ${INCLUDE} $(src_include) ${D}
 else
-AM_CCASFLAGS = ${yasm_args} ${INCLUDE} $(src_include) ${DEFS} ${D}
+AM_CCASFLAGS = ${asm_args} ${INCLUDE} $(src_include) ${DEFS} ${D}
 endif
 
 .asm.s:
@@ -147,12 +145,6 @@ isa-l_crypto.h:
 	@echo ''			>> $@
 	@echo '#ifndef _ISAL_CRYPTO_H_'	>> $@
 	@echo '#define _ISAL_CRYPTO_H_'	>> $@
-	@echo ''			>> $@
-	@echo '#define.ISAL_CRYPTO_MAJOR_VERSION.${VERSION}' |  ${AWK} -F . '{print $$1, $$2, $$3}' >> $@
-	@echo '#define.ISAL_CRYPTO_MINOR_VERSION.${VERSION}' |  ${AWK} -F . '{print $$1, $$2, $$4}' >> $@
-	@echo '#define.ISAL_CRYPTO_PATCH_VERSION.${VERSION}' |  ${AWK} -F . '{print $$1, $$2, $$5}' >> $@
-	@echo '#define ISAL_CRYPTO_MAKE_VERSION(maj, min, patch)  ((maj) * 0x10000 + (min) * 0x100 + (patch))' >> $@
-	@echo '#define ISAL_CRYPTO_VERSION ISAL_CRYPTO_MAKE_VERSION(ISAL_CRYPTO_MAJOR_VERSION, ISAL_CRYPTO_MINOR_VERSION, ISAL_CRYPTO_PATCH_VERSION)' >> $@
 	@echo ''			>> $@
 	@for unit in $(sort $(extern_hdrs)); do echo "#include <isa-l_crypto/$$unit>" | sed -e 's;include/;;' >> $@; done
 	@echo '#endif //_ISAL_CRYPTO_H_'	>> $@

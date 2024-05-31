@@ -1,5 +1,5 @@
 /**********************************************************************
-  Copyright(c) 2019 Arm Corporation All rights reserved.
+  Copyright(c) 2024 Intel Corporation All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -10,7 +10,7 @@
       notice, this list of conditions and the following disclaimer in
       the documentation and/or other materials provided with the
       distribution.
-    * Neither the name of Arm Corporation nor the names of its
+    * Neither the name of Intel Corporation nor the names of its
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
 
@@ -26,18 +26,22 @@
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **********************************************************************/
-#include "mh_sha1_murmur3_x64_128_internal.h"
-#include <string.h>
-int
-_mh_sha1_murmur3_x64_128_update(struct isal_mh_sha1_murmur3_x64_128_ctx *ctx, const void *buffer,
-                                uint32_t len)
+
+#include <stdlib.h>
+#include "isal_crypto_api.h"
+
+/* Set library version */
+const char *isal_crypto_version_str = ISAL_CRYPTO_VERSION_STR;
+const unsigned isal_crypto_version = ISAL_CRYPTO_VERSION;
+
+const char *
+isal_crypto_get_version_str(void)
 {
-        return mh_sha1_murmur3_x64_128_update_base(ctx, buffer, len);
+        return isal_crypto_version_str;
 }
 
-int
-_mh_sha1_murmur3_x64_128_finalize(struct isal_mh_sha1_murmur3_x64_128_ctx *ctx,
-                                  void *mh_sha1_digest, void *murmur3_x64_128_digest)
+unsigned
+isal_crypto_get_version(void)
 {
-        return mh_sha1_murmur3_x64_128_finalize_base(ctx, mh_sha1_digest, murmur3_x64_128_digest);
+        return isal_crypto_version;
 }

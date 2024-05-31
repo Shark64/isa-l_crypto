@@ -260,16 +260,24 @@ objs = \
 	bin\sha_self_tests.obj \
 	bin\self_tests.obj \
 	bin\asm_self_tests.obj \
-	bin\sm3_mb.obj
+	bin\sm3_mb.obj \
+	bin\version.obj
 
 
 INCLUDES  = -I./ -Isha1_mb/ -Isha256_mb/ -Isha512_mb/ -Imd5_mb/ -Imh_sha1/ -Imh_sha1_murmur3_x64_128/ -Imh_sha256/ -Irolling_hash/ -Ism3_mb/ -Iaes/ -Iinclude/ -Iintel-ipsec-mb/lib
-# Modern asm feature level, consider upgrading nasm/yasm before decreasing feature_level
-FEAT_FLAGS = -DHAVE_AS_KNOWS_AVX512 -DAS_FEATURE_LEVEL=10 -DHAVE_AS_KNOWS_SHANI
+# Modern asm feature level, consider upgrading nasm before decreasing feature_level
+FEAT_FLAGS = -DAS_FEATURE_LEVEL=10
 CFLAGS_REL = -O2 -DNDEBUG /Z7 /Gy
 CFLAGS_DBG = -Od -DDEBUG /Z7
+
+!if "$(CONFIG)" == "DEBUG"
+CFLAGS=$(CFLAGS_DBG)
+!else
+CFLAGS=$(CFLAGS_REL)
+!endif
+
 LINKFLAGS  = -nologo -incremental:no -debug
-CFLAGS     = $(CFLAGS_REL) -nologo -D_USE_MATH_DEFINES -DNO_COMPAT_ISAL_CRYPTO_API_2_24 $(FEAT_FLAGS) $(INCLUDES) $(D) /W3
+CFLAGS     = $(CFLAGS) -nologo -D_USE_MATH_DEFINES -DNO_COMPAT_ISAL_CRYPTO_API_2_24 $(FEAT_FLAGS) $(INCLUDES) $(D) /W3
 AFLAGS     = -f win64 $(FEAT_FLAGS) $(INCLUDES) $(D)
 CC         = cl
 # or CC    = icl -Qstd=c99
@@ -360,6 +368,8 @@ $?
 	$(CC) $(CFLAGS) /c -Fo$@ $?
 {fips}.asm.obj:
 	$(AS) $(AFLAGS) -o $@ $?
+{misc}.c.obj:
+	$(CC) $(CFLAGS) /c -Fo$@ $?
 
 
 # Examples
@@ -410,7 +420,9 @@ checks = \
 	sha512_mb_param_test.exe \
 	mh_sha1_murmur3_x64_128_param_test.exe \
 	sm3_mb_param_test.exe \
-	rolling_hash2_param_test.exe
+	rolling_hash2_param_test.exe \
+	version_test.exe \
+	self_tests_test.exe
 
 
 checks: lib $(checks)
