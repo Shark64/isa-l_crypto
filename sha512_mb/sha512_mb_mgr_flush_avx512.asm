@@ -101,6 +101,7 @@ mk_global _sha512_mb_mgr_flush_avx512, function, internal
 _sha512_mb_mgr_flush_avx512:
 	endbranch
 
+%ifidn __OUTPUT_FORMAT__, win64
 	mov     rax, rsp
 
 	sub     rsp, STACK_SPACE
@@ -113,7 +114,6 @@ _sha512_mb_mgr_flush_avx512:
 	mov     [rsp + _GPR_SAVE + 8*5], r13
 	mov     [rsp + _GPR_SAVE + 8*6], r14
 	mov     [rsp + _GPR_SAVE + 8*7], r15
-%ifidn __OUTPUT_FORMAT__, win64
 	mov     [rsp + _GPR_SAVE + 8*1], rsi
 	mov     [rsp + _GPR_SAVE + 8*2], rdi
 	vmovdqu  [rsp + _XMM_SAVE + 16*0], xmm6
@@ -127,59 +127,57 @@ _sha512_mb_mgr_flush_avx512:
 	vmovdqu  [rsp + _XMM_SAVE + 16*8], xmm14
 	vmovdqu  [rsp + _XMM_SAVE + 16*9], xmm15
 %endif
+	push	rbx
+	push	rbp
+	push	r12
+	push	r13
+	push	r14
+	push	r15
 
 	mov	DWORD(num_lanes_inuse), [state + _num_lanes_inuse]
-	cmp	num_lanes_inuse, 0
-	jz	return_null
+	xor	rax, rax, ; if lines_inuse = 0 then exit and return 0. Longer opcode for alignment
+	test	DWORD(num_lanes_inuse), DWORD(num_lanes_inuse)
+	jz	return
 
 	; find a lane with a non-null job
-	xor     idx, idx
-%assign I 1
-%rep 7
-	cmp	qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane], 0
-	cmovne	idx, [APPEND(lane_,I)]
-%assign I (I+1)
-%endrep
+	vpxor	xmm0, xmm0, xmm0
+	vpcmpneqq k1, zmm0, [state + _ldata +  _job_in_lane]
+	kmovb   DWORD(idx), k1
+	tzcnt	DWORD(idx), DWORD(idx)
 
 	; copy idx to empty lanes
 copy_lane_data:
-	mov     tmp, [state + _args + _data_ptr + 8*idx]
-
-%assign I 0
-%rep 8
-	cmp     qword [state + _ldata + I * _LANE_DATA_size + _job_in_lane], 0
-	jne     APPEND(skip_,I)
-	mov     [state + _args + _data_ptr + 8*I], tmp
-	mov     dword [state + _lens + 4 + 8*I], 0xFFFFFFFF
-APPEND(skip_,I):
-%assign I (I+1)
-%endrep
+	lea             rax, [state + _args + _data_ptr]
+	knotb		k1, k1	; k1 now select the null jobs
+        vpternlogq      zmm3, zmm3, zmm3, 0xFF ; 0xFFFF mask
+        vpbroadcastq    zmm1, [rax + 8*idx]
+        vmovdqu64       [rax]{k1}, zmm1
+        vmovdqu64       zmm0, [state + _lens]
+        vpsllq          zmm3, zmm3, 32
+        vporq           zmm0{k1}, zmm3
 
 	; Find min length, len in sha512_mgr is 64bit, high 32bit is block num, low 8bit is idx
-	vmovdqu ymm0, [state + _lens + 0*32]	; ymm0 has {D,d,C,c,B,b,A,a}
-	vmovdqu ymm1, [state + _lens + 1*32]
-
+	vextracti64x4 ymm1, zmm0, 0x1
 	vpminuq ymm2, ymm0, ymm1	; ymm2 has {D,i,C,i,B,i,A,i}
-	vpalignr ymm3, ymm3, ymm2, 8	; ymm3 has {x,i,D,i,x,i,B,i}
-	vpminuq ymm2, ymm2, ymm3	; ymm2 has {x,i,F,i,x,i,E,i}
-	vperm2i128 ymm3, ymm2, ymm2, 1	; ymm3 has {x,i,x,i,x,i,F,i}
-	vpminuq ymm2, ymm2, ymm3	; ymm2 has min value in high dword
+	vpalignr ymm4, ymm3, ymm2, 8	; ymm4 has {x,i,D,i,x,i,B,i}
+	vpminuq ymm2, ymm2, ymm4	; ymm2 has {x,i,F,i,x,i,E,i}
+	vextracti128 xmm4, ymm2, 1	; ymm4 has {x,i,x,i,x,i,F,i}
+	vpminuq xmm2, xmm2, xmm4	; ymm2 has min value in high dword
 
 	vmovq   idx, xmm2
 	mov     len2, idx
-	and     idx, 0xF
 	shr     len2, 32		; SHA512 blocksize is 1024bit
+	and     DWORD(idx), 0xF
+	test	DWORD(len2), DWORD(len2)
 	jz      len_is_0
 
-	vperm2i128 ymm2, ymm2, ymm2, 0	; ymm2 has {x,x,E,i,x,x,E,i}
-	vpand   ymm2, ymm2, [rel clear_low_nibble]	; ymm2 has {0,0,E,0,0,0,E,0}
-	vpshufd ymm2, ymm2, 0x44	; ymm2 has {E,0,E,0,E,0,E,0}
+; mgr len element 0xnnnnnnnn 0000000m, nnnnnnnn is blocknum, m is index
+	vpand   xmm2, xmm2, xmm3	; {E,0}
+	vpbroadcastq zmm2, xmm2	; ymm2 has {E,0,E,0,E,0,E,0}
 
-	vpsubd  ymm0, ymm0, ymm2
-	vpsubd  ymm1, ymm1, ymm2
+	vpsubd  zmm0, zmm0, zmm2
 
-	vmovdqu [state + _lens + 0*32], ymm0
-	vmovdqu [state + _lens + 1*32], ymm1
+	vmovdqu8 [state + _lens], zmm0
 
 	; "state" and "args" are the same address, arg1
 	; len is arg2
@@ -188,33 +186,23 @@ APPEND(skip_,I):
 
 len_is_0:
 	; process completed job "idx"
-	imul    lane_data, idx, _LANE_DATA_size
-	lea     lane_data, [state + _ldata + lane_data]
-
+        vpmovzxwq zmm1, [rel gather] ; gather indexes
+	lea     lane_data, [state + _ldata + idx*8]
+	xor	len2%+d, len2%+d
 	mov     job_rax, [lane_data + _job_in_lane]
-	mov     qword [lane_data + _job_in_lane], 0
-	mov     dword [job_rax + _status], ISAL_STS_COMPLETED
+	mov     qword [lane_data + _job_in_lane], len2 ; 0
+	add	len2%+d, ISAL_STS_COMPLETED
+	mov     dword [job_rax + _status], len2%+d
 	mov     unused_lanes, [state + _unused_lanes]
 	shl     unused_lanes, 8
 	or      unused_lanes, idx
 	mov     [state + _unused_lanes], unused_lanes
 
-        mov     DWORD(num_lanes_inuse), [state + _num_lanes_inuse]
-        sub     num_lanes_inuse, 1
-        mov     [state + _num_lanes_inuse], DWORD(num_lanes_inuse)
-	vmovq    xmm0, [state + _args_digest + 8*idx + 0*64]
-	vpinsrq  xmm0, [state + _args_digest + 8*idx + 1*64], 1
-	vmovq    xmm1, [state + _args_digest + 8*idx + 2*64]
-	vpinsrq  xmm1, [state + _args_digest + 8*idx + 3*64], 1
-	vmovq    xmm2, [state + _args_digest + 8*idx + 4*64]
-	vpinsrq  xmm2, [state + _args_digest + 8*idx + 5*64], 1
-	vmovq    xmm3, [state + _args_digest + 8*idx + 6*64]
-	vpinsrq  xmm3, [state + _args_digest + 8*idx + 7*64], 1
-
-	vmovdqa  [job_rax + _result_digest + 0*16], xmm0
-	vmovdqa  [job_rax + _result_digest + 1*16], xmm1
-	vmovdqa  [job_rax + _result_digest + 2*16], xmm2
-	vmovdqa  [job_rax + _result_digest + 3*16], xmm3
+	dec	[state + _num_lanes_inuse]
+	lea	state, [state + _args_digest + 8*idx]
+	kxnorw	k1, k1, k1
+	vpgatherqq zmm0{k1}, [state+zmm1]; gather results
+	vmovdqa64  [job_rax + _result_digest], zmm0
 
 return:
 
@@ -231,7 +219,6 @@ return:
 	vmovdqu  xmm15, [rsp + _XMM_SAVE + 16*9]
 	mov     rsi, [rsp + _GPR_SAVE + 8*1]
 	mov     rdi, [rsp + _GPR_SAVE + 8*2]
-%endif
 	mov     rbx, [rsp + _GPR_SAVE + 8*0]
 	mov     rbp, [rsp + _GPR_SAVE + 8*3]
 	mov     r12, [rsp + _GPR_SAVE + 8*4]
@@ -240,23 +227,23 @@ return:
 	mov     r15, [rsp + _GPR_SAVE + 8*7]
 
 	mov	rsp, [rsp + stack_frame.rsp]
+%endif
+	pop r15
+	pop r14
+	pop r13
+	pop r12
+	pop rbp
+	pop rbx
 
 	ret
 
-return_null:
-	xor     job_rax, job_rax
-	jmp     return
-
-section .data align=32
-
-align 32
-clear_low_nibble:	; mgr len element 0xnnnnnnnn 0000000m, nnnnnnnn is blocknum, m is index
-	dq 0xFFFFFFFF00000000, 0x0000000000000000
-	dq 0xFFFFFFFF00000000, 0x0000000000000000
-lane_1:     dq  1
-lane_2:     dq  2
-lane_3:     dq  3
-lane_4:     dq  4
-lane_5:     dq  5
-lane_6:     dq  6
-lane_7:     dq  7
+section .rodata
+align 16
+gather: dw 64*0
+        dw 64*1
+        dw 64*2
+        dw 64*3
+        dw 64*4
+        dw 64*5
+        dw 64*6
+        dw 64*7
